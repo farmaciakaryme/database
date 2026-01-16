@@ -1,8 +1,10 @@
 # Colección de Ejemplos - API Reportes Médicos
 
+# render: https://render.com/docs/web-services#port-binding
+
 ## Variables globales
 ```
-BASE_URL = http://localhost:5000
+BASE_URL =https://render.com/docs/web-services#port-binding
 TOKEN = (se obtiene después del login)
 ```
 

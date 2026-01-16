@@ -6,14 +6,11 @@ const pacienteSchema = new mongoose.Schema({
     required: [true, 'El nombre es requerido'],
     trim: true
   },
-  fechaNacimiento: {
-    type: Date,
-    required: [true, 'La fecha de nacimiento es requerida']
-  },
+ 
   edad: {
     type: Number,
     required: [true, 'La edad es requerida']
-  },
+  }/*,
   genero: {
     type: String,
     enum: ['masculino', 'femenino', 'otro'],
@@ -57,7 +54,7 @@ const pacienteSchema = new mongoose.Schema({
   activo: {
     type: Boolean,
     default: true
-  }
+  }*/
 }, {
   timestamps: true
 });

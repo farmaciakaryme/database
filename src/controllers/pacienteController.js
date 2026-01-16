@@ -9,19 +9,27 @@ export const getPacientes = async (req, res, next) => {
       page = 1, 
       limit = 10, 
       search = '', 
-      activo = 'true',
+      activo = 'all', // ✅ Cambiado a 'all' por defecto
       sort = '-createdAt' 
     } = req.query;
 
     const query = {};
 
-    // Filtro de búsqueda
-    if (search) {
-      query.$or = [
-        { nombre: { $regex: search, $options: 'i' } },
-        { telefono: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+    // Filtro de búsqueda - solo buscar en campos que TODOS tienen
+    if (search && search.trim() !== '') {
+      const searchFields = [
+        { nombre: { $regex: search, $options: 'i' } }
       ];
+      
+      // Solo agregar búsqueda en teléfono/email si el campo existe
+      if (search.includes('@')) {
+        searchFields.push({ email: { $regex: search, $options: 'i' } });
+      }
+      if (/^\d+$/.test(search)) {
+        searchFields.push({ telefono: { $regex: search, $options: 'i' } });
+      }
+      
+      query.$or = searchFields;
     }
 
     // Filtro de activo/inactivo
@@ -35,10 +43,20 @@ export const getPacientes = async (req, res, next) => {
       sort
     };
 
-    const pacientes = await Paciente.find(query)
-      .sort(options.sort)
-      .limit(options.limit)
-      .skip((options.page - 1) * options.limit);
+    // ✅ Si el límite es muy alto, no paginar
+    const shouldPaginate = options.limit < 999;
+    
+    let pacientes;
+    if (shouldPaginate) {
+      pacientes = await Paciente.find(query)
+        .sort(options.sort)
+        .limit(options.limit)
+        .skip((options.page - 1) * options.limit);
+    } else {
+      // Traer TODOS sin límite
+      pacientes = await Paciente.find(query)
+        .sort(options.sort);
+    }
 
     const total = await Paciente.countDocuments(query);
 
@@ -53,6 +71,7 @@ export const getPacientes = async (req, res, next) => {
       }
     });
   } catch (error) {
+    console.error('Error en getPacientes:', error);
     next(error);
   }
 };
@@ -164,13 +183,12 @@ export const searchPacientes = async (req, res, next) => {
     const { query } = req.params;
     const { limit = 10 } = req.query;
 
-    const pacientes = await Paciente.find({
-      $or: [
-        { nombre: { $regex: query, $options: 'i' } },
-        { telefono: { $regex: query, $options: 'i' } }
-      ],
-      activo: true
-    })
+    // ✅ Búsqueda flexible - solo en nombre si no hay teléfono
+    const searchQuery = {
+      nombre: { $regex: query, $options: 'i' }
+    };
+
+    const pacientes = await Paciente.find(searchQuery)
       .limit(parseInt(limit))
       .select('nombre telefono email edad');
 

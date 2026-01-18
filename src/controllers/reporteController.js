@@ -19,7 +19,8 @@ export const getReportes = async (req, res, next) => {
       sort = '-fechaRealizacion' 
     } = req.query;
 
-    const query = {};
+    const query = { estado: { $ne: 'cancelado' } };
+
 
     // Filtro de búsqueda por folio
     if (search) {

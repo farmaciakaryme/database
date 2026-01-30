@@ -213,7 +213,8 @@ export const updateReporte = async (req, res, next) => {
       interpretacion, 
       estado, 
       fechaEntrega,
-      fechaRealizacion  // ✅ AGREGADO: Permitir editar fecha y hora
+      fechaRealizacion,
+      datosPaciente  // ✅ NUEVO: Permitir editar datos del paciente
     } = req.body;
 
     const reporte = await Reporte.findById(req.params.id);
@@ -232,7 +233,26 @@ export const updateReporte = async (req, res, next) => {
     if (interpretacion !== undefined) reporte.interpretacion = interpretacion;
     if (estado) reporte.estado = estado;
     if (fechaEntrega) reporte.fechaEntrega = fechaEntrega;
-    if (fechaRealizacion) reporte.fechaRealizacion = new Date(fechaRealizacion); // ✅ AGREGADO
+    if (fechaRealizacion) reporte.fechaRealizacion = new Date(fechaRealizacion);
+    
+    // ✅ NUEVO: Actualizar datos del paciente si se proporcionan
+    if (datosPaciente) {
+      if (datosPaciente.nombre !== undefined) {
+        reporte.datosPaciente.nombre = datosPaciente.nombre;
+      }
+      if (datosPaciente.edad !== undefined) {
+        reporte.datosPaciente.edad = datosPaciente.edad;
+      }
+      if (datosPaciente.genero !== undefined) {
+        reporte.datosPaciente.genero = datosPaciente.genero;
+      }
+      if (datosPaciente.telefono !== undefined) {
+        reporte.datosPaciente.telefono = datosPaciente.telefono;
+      }
+      if (datosPaciente.numeroExpediente !== undefined) {
+        reporte.datosPaciente.numeroExpediente = datosPaciente.numeroExpediente;
+      }
+    }
 
     await reporte.save();
 

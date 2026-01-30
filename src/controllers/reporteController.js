@@ -21,7 +21,6 @@ export const getReportes = async (req, res, next) => {
 
     const query = { estado: { $ne: 'cancelado' } };
 
-
     // Filtro de búsqueda por folio
     if (search) {
       query.folio = { $regex: search, $options: 'i' };
@@ -207,7 +206,15 @@ export const createReporte = async (req, res, next) => {
 // @access  Private
 export const updateReporte = async (req, res, next) => {
   try {
-    const { resultados, camposAdicionales, observaciones, interpretacion, estado, fechaEntrega } = req.body;
+    const { 
+      resultados, 
+      camposAdicionales, 
+      observaciones, 
+      interpretacion, 
+      estado, 
+      fechaEntrega,
+      fechaRealizacion  // ✅ AGREGADO: Permitir editar fecha y hora
+    } = req.body;
 
     const reporte = await Reporte.findById(req.params.id);
 
@@ -225,6 +232,7 @@ export const updateReporte = async (req, res, next) => {
     if (interpretacion !== undefined) reporte.interpretacion = interpretacion;
     if (estado) reporte.estado = estado;
     if (fechaEntrega) reporte.fechaEntrega = fechaEntrega;
+    if (fechaRealizacion) reporte.fechaRealizacion = new Date(fechaRealizacion); // ✅ AGREGADO
 
     await reporte.save();
 

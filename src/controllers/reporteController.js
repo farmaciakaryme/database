@@ -21,9 +21,12 @@ export const getReportes = async (req, res, next) => {
 
     const query = { estado: { $ne: 'cancelado' } };
 
-    // Filtro de búsqueda por folio
+    // ✅ MEJORADO: Filtro de búsqueda por folio O nombre de paciente
     if (search) {
-      query.folio = { $regex: search, $options: 'i' };
+      query.$or = [
+        { folio: { $regex: search, $options: 'i' } },
+        { 'datosPaciente.nombre': { $regex: search, $options: 'i' } }
+      ];
     }
 
     // Filtro por estado

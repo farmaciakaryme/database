@@ -85,6 +85,47 @@ const campoAdicionalSchema = new mongoose.Schema({
   }
 }, { _id: true });
 
+// Sub-schema para un periodo de precio por horario
+const periodoPrecioSchema = new mongoose.Schema({
+  nombre: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  horaInicio: {
+    type: String,
+    required: true,
+    match: [/^\d{2}:\d{2}$/, 'Formato de hora invalido, usar HH:MM']
+  },
+  horaFin: {
+    type: String,
+    required: true,
+    match: [/^\d{2}:\d{2}$/, 'Formato de hora invalido, usar HH:MM']
+  },
+  precio: {
+    type: Number,
+    required: true,
+    min: [0, 'El precio no puede ser negativo']
+  }
+}, { _id: false });
+
+// Sub-schema de precios de la prueba
+const preciosSchema = new mongoose.Schema({
+  tipo: {
+    type: String,
+    enum: ['fijo', 'por_periodo'],
+    default: 'fijo'
+  },
+  // Usado cuando tipo === 'fijo'
+  precioFijo: {
+    type: Number,
+    min: [0, 'El precio no puede ser negativo'],
+    default: null
+  },
+  // Usado cuando tipo === 'por_periodo'
+  periodos: [periodoPrecioSchema]
+}, { _id: false });
+
 const pruebaSchema = new mongoose.Schema({
   nombre: {
     type: String,
@@ -94,7 +135,7 @@ const pruebaSchema = new mongoose.Schema({
   },
   codigo: {
     type: String,
-    required: [true, 'El código de la prueba es requerido'],
+    required: [true, 'El codigo de la prueba es requerido'],
     trim: true,
     unique: true,
     uppercase: true
@@ -105,7 +146,7 @@ const pruebaSchema = new mongoose.Schema({
   },
   categoria: {
     type: String,
-    enum: ['toxicologia', 'hematologia', 'quimica_clinica', 'microbiologia', 'inmunologia', 'otro'],
+    enum: ['toxicologia', 'hematologia', 'quimica_clinica', 'microbiologia', 'inmunologia', 'otro', 'general'],
     default: 'otro'
   },
   subPruebas: [subPruebaSchema],
@@ -126,9 +167,15 @@ const pruebaSchema = new mongoose.Schema({
       default: 'horas'
     }
   },
+  // Campo legado mantenido para compatibilidad con seed existente
   precio: {
     type: Number,
     default: 0
+  },
+  // Nueva estructura de precios flexible
+  precios: {
+    type: preciosSchema,
+    default: () => ({ tipo: 'fijo', precioFijo: null, periodos: [] })
   },
   activo: {
     type: Boolean,
@@ -146,13 +193,13 @@ const pruebaSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Índices
+// Indices
 pruebaSchema.index({ nombre: 'text', descripcion: 'text' });
 pruebaSchema.index({ codigo: 1 });
 pruebaSchema.index({ categoria: 1 });
 
-// Método para obtener estructura de formulario
-pruebaSchema.methods.getFormStructure = function() {
+// Metodo para obtener estructura de formulario
+pruebaSchema.methods.getFormStructure = function () {
   return {
     id: this._id,
     nombre: this.nombre,
@@ -161,6 +208,41 @@ pruebaSchema.methods.getFormStructure = function() {
     subPruebas: this.subPruebas.sort((a, b) => a.orden - b.orden),
     camposAdicionales: this.camposAdicionales.sort((a, b) => a.orden - b.orden)
   };
+};
+
+// Metodo para obtener el precio aplicable segun la hora dada
+// Si no hay estructura de precios nueva, cae al campo legado `precio`
+pruebaSchema.methods.getPrecioActual = function (fecha = new Date()) {
+  const p = this.precios;
+
+  if (!p || (p.tipo === 'fijo' && p.precioFijo === null && !this.precio)) {
+    return null;
+  }
+
+  if (!p || p.tipo === 'fijo') {
+    return p?.precioFijo ?? this.precio ?? null;
+  }
+
+  if (p.tipo === 'por_periodo' && p.periodos?.length > 0) {
+    const hhmm = `${fecha.getHours().toString().padStart(2, '0')}:${fecha
+      .getMinutes()
+      .toString()
+      .padStart(2, '0')}`;
+
+    for (const periodo of p.periodos) {
+      const { horaInicio, horaFin } = periodo;
+      if (!horaInicio || !horaFin) continue;
+
+      // Periodo que cruza medianoche, ej: 22:00 - 06:00
+      if (horaInicio > horaFin) {
+        if (hhmm >= horaInicio || hhmm < horaFin) return periodo.precio;
+      } else {
+        if (hhmm >= horaInicio && hhmm < horaFin) return periodo.precio;
+      }
+    }
+  }
+
+  return null;
 };
 
 const Prueba = mongoose.model('Prueba', pruebaSchema);
